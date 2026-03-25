@@ -4,13 +4,14 @@ import { AuthResponse, User } from '@/types/auth';
 
 export const authService = {
   async login(email: string, password: string): Promise<AuthResponse> {
-    const { data } = await api.post<AuthResponse>('/auth/login', {
+    const response = await api.post('/auth/login', {
       email,
       password,
     });
-    await storage.setToken(data.token);
-    await storage.setUser(data.user);
-    return data;
+    const { token, user } = response.data.data;
+    await storage.setToken(token);
+    await storage.setUser(user);
+    return { token, user };
   },
 
   async register(
@@ -18,14 +19,15 @@ export const authService = {
     email: string,
     password: string,
   ): Promise<AuthResponse> {
-    const { data } = await api.post<AuthResponse>('/auth/register', {
+    const response = await api.post('/auth/register', {
       name,
       email,
       password,
     });
-    await storage.setToken(data.token);
-    await storage.setUser(data.user);
-    return data;
+    const { token, user } = response.data.data;
+    await storage.setToken(token);
+    await storage.setUser(user);
+    return { token, user };
   },
 
   async logout(): Promise<void> {

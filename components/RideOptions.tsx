@@ -1,208 +1,291 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useState } from 'react'
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  Platform,
-  Alert,
-  Linking,
-  StyleSheet,
-} from 'react-native';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
-import * as Location from 'expo-location';
-import { Station } from '@/types/station';
-import { Ionicons } from '@expo/vector-icons';
-import { radius, spacing, fontSize } from '@/constants/theme';
+  View, Text, TouchableOpacity, Modal,
+  StyleSheet, Linking, Platform, Alert, ActivityIndicator
+} from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import * as Location from 'expo-location'
+import { Station } from '@/types/station'
 
-interface RideOptionsProps {
-  station: Station | null;
-  isVisible: boolean;
-  onClose: () => void;
+interface Props {
+  visible: boolean
+  station: Station | null
+  onClose: () => void
 }
 
-const RIDE_SERVICES = [
+const RIDE_OPTIONS = [
   {
-    name: 'Uber',
-    icon: 'car-outline',
-    color: '#F1F5F9', // changed to light for dark theme visibility
-  },
-  {
+    id: 'bolt',
     name: 'Bolt',
-    icon: 'flash-outline',
     color: '#34D186',
+    bgColor: 'rgba(52,209,134,0.1)',
+    borderColor: 'rgba(52,209,134,0.25)',
+    icon: 'flash-outline',
+    description: 'Fast and affordable',
   },
   {
-    name: 'InDrive',
-    icon: 'car-sport-outline',
-    color: '#C6FF00',
+    id: 'uber',
+    name: 'Uber',
+    color: '#FFFFFF',
+    bgColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.15)',
+    icon: 'car-outline',
+    description: 'Reliable rides anytime',
   },
-] as const;
+  {
+    id: 'indrive',
+    name: 'InDrive',
+    color: '#FACC15',
+    bgColor: 'rgba(250,204,21,0.1)',
+    borderColor: 'rgba(250,204,21,0.25)',
+    icon: 'navigate-outline',
+    description: 'Negotiate your own fare',
+  },
+]
 
-export default function RideOptions({
-  station,
-  isVisible,
-  onClose,
-}: RideOptionsProps) {
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ['35%'], []);
+export const RideOptions = ({ visible, station, onClose }: Props) => {
+  const [loading, setLoading] = useState<string | null>(null)
 
-  const handleSheetChanges = useCallback(
-    (index: number) => {
-      if (index === -1) {
-        onClose();
+  const openRide = async (appId: string) => {
+    if (!station) return
+    setLoading(appId)
+
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync()
+      
+      let uLat = station.lat + 0.002
+      let uLng = station.lng + 0.002
+
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        })
+        uLat = loc.coords.latitude
+        uLng = loc.coords.longitude
       }
-    },
-    [onClose],
-  );
 
-  const openRideApp = useCallback(
-    async (service: (typeof RIDE_SERVICES)[number]) => {
-      if (!station) return;
+      const dLat = station.lat.toFixed(6)
+      const dLng = station.lng.toFixed(6)
+      const pLat = uLat.toFixed(6)
+      const pLng = uLng.toFixed(6)
 
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            'Location Required',
-            'Please enable location to book a ride.',
-          );
-          return;
-        }
+      let url = ''
 
-        const location = await Location.getCurrentPositionAsync({});
-        const pickupLat = location.coords.latitude;
-        const pickupLng = location.coords.longitude;
-        const dropoffLat = station.lat;
-        const dropoffLng = station.lng;
-
-        let url = '';
-
-        switch (service.name) {
-          case 'Uber':
-            url = `uber://?action=setPickup&pickup[latitude]=${pickupLat}&pickup[longitude]=${pickupLng}&dropoff[latitude]=${dropoffLat}&dropoff[longitude]=${dropoffLng}`;
-            break;
-          case 'Bolt':
-            url = `https://bolt.eu/ride/?pickup_lat=${pickupLat}&pickup_lng=${pickupLng}&dropoff_lat=${dropoffLat}&dropoff_lng=${dropoffLng}`;
-            break;
-          case 'InDrive':
-            url = 'indrive://';
-            break;
-        }
-
-        const canOpen = await Linking.canOpenURL(url);
-
-        if (canOpen) {
-          await Linking.openURL(url);
-        } else {
-          // Fallback for InDrive
-          if (service.name === 'InDrive') {
-            const storeUrl =
-              Platform.OS === 'ios'
-                ? 'https://apps.apple.com/app/indrive/id1436428093'
-                : 'market://details?id=sinet.startup.inDriver';
-            await Linking.openURL(storeUrl);
-          } else {
-            Alert.alert(
-              'App Not Found',
-              `${service.name} is not installed on your device.`,
-            );
-          }
-        }
-      } catch (error) {
-        Alert.alert('Error', 'Unable to open ride app. Please try again.');
+      if (appId === 'bolt') {
+        url = `https://bolt.eu/ride/?pickup_lat=${pLat}&pickup_lng=${pLng}&dropoff_lat=${dLat}&dropoff_lng=${dLng}`
+      } else if (appId === 'uber') {
+        url = `https://m.uber.com/ul/?action=setPickup&pickup%5Blatitude%5D=${pLat}&pickup%5Blongitude%5D=${pLng}&dropoff%5Blatitude%5D=${dLat}&dropoff%5Blongitude%5D=${dLng}`
+      } else if (appId === 'indrive') {
+        url = Platform.OS === 'android'
+          ? 'https://play.google.com/store/apps/details?id=sinet.startup.inDriver'
+          : 'https://apps.apple.com/app/indrive/id1436428093'
       }
-    },
-    [station],
-  );
 
-  if (!isVisible || !station) return null;
+      console.log('Opening URL:', url)
+      const supported = await Linking.canOpenURL(url)
+      if (supported || url.startsWith('https://')) {
+        await Linking.openURL(url)
+      } else {
+        Alert.alert('Error', 'Could not open this app')
+      }
+      onClose()
+    } catch (err) {
+      console.error('Ride link error:', err)
+      Alert.alert(
+        'Could not open',
+        'Try installing the app first or check your connection.'
+      )
+    } finally {
+      setLoading(null)
+    }
+  }
 
   return (
-    <BottomSheet
-      ref={bottomSheetRef}
-      index={0}
-      snapPoints={snapPoints}
-      onChange={handleSheetChanges}
-      enablePanDownToClose
-      backgroundStyle={[styles.background, { backgroundColor: '#0A1628' }]}
-      handleIndicatorStyle={[
-        styles.handleIndicator,
-        { backgroundColor: '#94A3B8' },
-      ]}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
     >
-      <BottomSheetView style={styles.content}>
-        <Text style={[styles.title, { color: '#F1F5F9' }]}>
-          Book a Ride to {station.name}
-        </Text>
-        <Text style={[styles.subtitle, { color: '#94A3B8' }]}>
-          Choose your preferred ride service
-        </Text>
+      <View style={styles.overlay}>
+        <TouchableOpacity
+          style={styles.backdrop}
+          onPress={onClose}
+          activeOpacity={1}
+        />
+        <View style={styles.sheet}>
 
-        <View style={styles.buttonContainer}>
-          {RIDE_SERVICES.map((service) => (
-            <TouchableOpacity
-              key={service.name}
-              style={[
-                styles.rideButton,
-                { backgroundColor: '#030816', borderColor: 'rgba(59, 130, 246, 0.1)' },
-              ]}
-              activeOpacity={0.85}
-              onPress={() => openRideApp(service as any)}
-            >
-              <Ionicons name={service.icon as any} size={28} color={service.color} style={styles.rideIcon} />
-              <Text style={[styles.rideName, { color: '#F1F5F9' }]}>
-                {service.name}
+          {/* Handle */}
+          <View style={styles.handle} />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>Book a Ride</Text>
+              <Text style={styles.subtitle} numberOfLines={1}>
+                To {station?.name}
               </Text>
+            </View>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={22} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.label}>
+            Choose your ride — pre-filled with your 
+            location and this station as destination
+          </Text>
+
+          {/* Ride options */}
+          {RIDE_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.id}
+              style={[
+                styles.option,
+                {
+                  backgroundColor: option.bgColor,
+                  borderColor: option.borderColor,
+                },
+                loading === option.id && { opacity: 0.7 }
+              ]}
+              onPress={() => openRide(option.id)}
+              disabled={loading !== null}
+              activeOpacity={0.8}
+            >
+              <View style={[
+                styles.iconCircle,
+                { backgroundColor: option.bgColor }
+              ]}>
+                {loading === option.id ? (
+                  <ActivityIndicator 
+                    size="small" 
+                    color={option.color} 
+                  />
+                ) : (
+                  <Ionicons
+                    name={option.icon as any}
+                    size={22}
+                    color={option.color}
+                  />
+                )}
+              </View>
+              <View style={styles.optionText}>
+                <Text style={[
+                  styles.optionName,
+                  { color: option.color }
+                ]}>
+                  {loading === option.id 
+                    ? 'Opening...' 
+                    : option.name
+                  }
+                </Text>
+                <Text style={styles.optionDesc}>
+                  {option.description}
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={option.color}
+              />
             </TouchableOpacity>
           ))}
+
+          {/* Disclaimer */}
+          <Text style={styles.disclaimer}>
+            Your current location will be used as pickup. 
+            Station location will be set as destination.
+          </Text>
+
         </View>
-      </BottomSheetView>
-    </BottomSheet>
-  );
+      </View>
+    </Modal>
+  )
 }
 
 const styles = StyleSheet.create({
-  background: {
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
-  handleIndicator: {
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  sheet: {
+    backgroundColor: '#0A1628',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 40,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: 'rgba(59,130,246,0.2)',
+  },
+  handle: {
     width: 40,
     height: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   title: {
-    fontSize: fontSize.lg,
+    fontSize: 18,
     fontWeight: '700',
-    marginBottom: spacing.xs,
+    color: '#F1F5F9',
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: fontSize.sm,
-    marginBottom: spacing.lg,
+    fontSize: 13,
+    color: '#64748B',
+    maxWidth: 260,
   },
-  buttonContainer: {
+  label: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  option: {
     flexDirection: 'row',
-    gap: spacing.md,
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
   },
-  rideButton: {
-    flex: 1,
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
   },
-  rideIcon: {
-    fontSize: 28,
-    marginBottom: spacing.sm,
+  optionText: {
+    flex: 1,
   },
-  rideName: {
-    fontSize: fontSize.base,
-    fontWeight: '600',
+  optionName: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
   },
-});
+  optionDesc: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  disclaimer: {
+    fontSize: 11,
+    color: '#334155',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 16,
+  },
+})

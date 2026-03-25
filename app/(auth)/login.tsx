@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Animated,
   Pressable,
+  Image,
 } from 'react-native';
 import { router, Link } from 'expo-router';
 import { authService } from '@/services/auth.service';
@@ -137,6 +138,25 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const getErrorMessage = (error: any): string => {
+    const errorCode = error.response?.data?.errorCode;
+    const message = error.response?.data?.message;
+
+    switch (errorCode) {
+      case 'DUPLICATE_EMAIL':
+        return 'This email is already registered. Try logging in.';
+      case 'INVALID_CREDENTIALS':
+        return 'Wrong email or password. Please try again.';
+      case 'VALIDATION_ERROR':
+        return message || 'Please check your inputs.';
+      default:
+        if (!error.response) {
+          return 'Cannot connect to server. Check your internet.';
+        }
+        return message || 'Something went wrong. Try again.';
+    }
+  };
+
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       setError('Please fill in all fields');
@@ -150,7 +170,7 @@ export default function LoginScreen() {
       await authService.login(email.trim(), password);
       router.replace('/(tabs)');
     } catch (err) {
-      setError('Invalid email or password. Please try again.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -179,19 +199,36 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ alignItems: 'center', marginBottom: 48 }}>
-          <Text
-            style={{
-              fontSize: 40,
-              fontWeight: '800',
-              color: '#3B82F6',
-              letterSpacing: -1,
-              marginBottom: 4,
-            }}
-          >
-            MovePal
+        <View style={{ alignItems: 'center', marginBottom: 48, gap: 8 }}>
+          <Image 
+            source={require('../../assets/images/icon.png')} 
+            style={{ width: 80, height: 80, borderRadius: 16 }}
+          />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text
+              style={{
+                fontSize: 36,
+                fontWeight: '900',
+                color: '#FFFFFF',
+                letterSpacing: -1.5,
+              }}
+            >
+              Move
+            </Text>
+            <Text
+              style={{
+                fontSize: 36,
+                fontWeight: '900',
+                color: '#3B82F6',
+                letterSpacing: -1.5,
+              }}
+            >
+              Pal
+            </Text>
+          </View>
+          <Text style={{ fontSize: 14, color: '#64748B', fontStyle: 'italic' }}>
+            Know before you go.
           </Text>
-          <Text style={{ fontSize: 15, color: '#94A3B8' }}>Beat the crowd. Move smarter.</Text>
         </View>
 
         <View>

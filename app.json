@@ -8,9 +8,9 @@
     "scheme": "movepal",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#030816"
+      "image": "./assets/images/icon.png",
+      "backgroundColor": "#030816",
+      "resizeMode": "contain"
     },
     "ios": {
       "supportsTablet": true,
@@ -18,17 +18,9 @@
         "LSApplicationQueriesSchemes": [
           "uber",
           "bolt",
-          "indrive",
-          "uber",
-          "bolt",
-          "indrive",
-          "uber",
-          "bolt",
-          "indrive",
-          "uber",
-          "bolt",
           "indrive"
         ]
+
       },
       "bundleIdentifier": "com.clinton-lynxx.movepal"
     },
@@ -50,7 +42,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       "expo-router",
@@ -63,10 +55,16 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png"
+          "icon": "./assets/images/icon.png",
+          "color": "#030816",
+          "sounds": []
         }
       ]
     ],
+    "notification": {
+      "icon": "./assets/images/icon.png",
+      "color": "#3B82F6"
+    },
     "experiments": {
       "typedRoutes": true
     },

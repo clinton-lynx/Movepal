@@ -9,8 +9,11 @@ import {
   Platform,
   Alert,
   Linking,
+  TextInput,
+  Image,
+  Easing,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { ActivityIndicator } from 'react-native';
@@ -20,6 +23,43 @@ import { Station, StationStatus } from '@/types/station';
 import { STATUS_COLOR, STATUS_LABEL } from '@/constants/stations';
 import StatusBadge from '@/components/StatusBadge';
 import * as Location from 'expo-location';
+import { useProximityCheck } from '@/hooks/useProximityCheck';
+import { StationBottomSheet } from '@/components/StationBottomSheet';
+
+import { SvgXml } from 'react-native-svg';
+
+const MARKER_XML: Record<string, string> = {
+  heavy: `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52">
+  <ellipse cx="20" cy="50" rx="7" ry="3" fill="rgba(0,0,0,0.25)"/>
+  <path d="M20 2C12.3 2 6 8.3 6 16C6 27 20 50 20 50S34 27 34 16C34 8.3 27.7 2 20 2Z" fill="#EF4444"/>
+  <circle cx="20" cy="16" r="10" fill="rgba(255,255,255,0.15)"/>
+  <rect x="12" y="12" width="16" height="10" rx="2.5" fill="none" stroke="white" stroke-width="1.8"/>
+  <line x1="12" y1="16" x2="28" y2="16" stroke="white" stroke-width="1"/>
+  <circle cx="15" cy="22" r="2" fill="#EF4444" stroke="white" stroke-width="1.5"/>
+  <circle cx="25" cy="22" r="2" fill="#EF4444" stroke="white" stroke-width="1.5"/>
+  <rect x="18" y="17" width="4" height="5" rx="1" fill="rgba(255,255,255,0.35)"/>
+</svg>`,
+  moderate: `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52">
+  <ellipse cx="20" cy="50" rx="7" ry="3" fill="rgba(0,0,0,0.25)"/>
+  <path d="M20 2C12.3 2 6 8.3 6 16C6 27 20 50 20 50S34 27 34 16C34 8.3 27.7 2 20 2Z" fill="#F97316"/>
+  <circle cx="20" cy="16" r="10" fill="rgba(255,255,255,0.15)"/>
+  <rect x="12" y="12" width="16" height="10" rx="2.5" fill="none" stroke="white" stroke-width="1.8"/>
+  <line x1="12" y1="16" x2="28" y2="16" stroke="white" stroke-width="1"/>
+  <circle cx="15" cy="22" r="2" fill="#F97316" stroke="white" stroke-width="1.5"/>
+  <circle cx="25" cy="22" r="2" fill="#F97316" stroke="white" stroke-width="1.5"/>
+  <rect x="18" y="17" width="4" height="5" rx="1" fill="rgba(255,255,255,0.35)"/>
+</svg>`,
+  flowing: `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52">
+  <ellipse cx="20" cy="50" rx="7" ry="3" fill="rgba(0,0,0,0.25)"/>
+  <path d="M20 2C12.3 2 6 8.3 6 16C6 27 20 50 20 50S34 27 34 16C34 8.3 27.7 2 20 2Z" fill="#22C55E"/>
+  <circle cx="20" cy="16" r="10" fill="rgba(255,255,255,0.15)"/>
+  <rect x="12" y="12" width="16" height="10" rx="2.5" fill="none" stroke="white" stroke-width="1.8"/>
+  <line x1="12" y1="16" x2="28" y2="16" stroke="white" stroke-width="1"/>
+  <circle cx="15" cy="22" r="2" fill="#22C55E" stroke="white" stroke-width="1.5"/>
+  <circle cx="25" cy="22" r="2" fill="#22C55E" stroke="white" stroke-width="1.5"/>
+  <rect x="18" y="17" width="4" height="5" rx="1" fill="rgba(255,255,255,0.35)"/>
+</svg>`,
+};
 
 const { height, width } = Dimensions.get('window');
 
@@ -40,7 +80,17 @@ const customMapStyle = [
   { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#060d1c' }] },
 ];
 
-function AnimatedMarker({ station, onPress }: { station: Station; onPress: () => void }) {
+function AnimatedMarker({ 
+  station, 
+  onPress, 
+  isNearby 
+}: { 
+  station: Station; 
+  onPress: () => void;
+  isNearby?: boolean;
+}) {
+
+
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const isHeavy = station.status === 'heavy';
 
@@ -74,7 +124,21 @@ function AnimatedMarker({ station, onPress }: { station: Station; onPress: () =>
       }}
     >
       <View style={styles.markerContainer}>
+        {isNearby && (
+          <View style={{
+            position: 'absolute',
+            width: 52,
+            height: 64,
+            borderRadius: 26,
+            borderWidth: 2.5,
+            borderColor: 'white',
+            opacity: 0.6,
+            top: -6,
+            left: -6,
+          }} />
+        )}
         {isHeavy && (
+
           <Animated.View
             style={[
               styles.markerPulse,
@@ -89,9 +153,10 @@ function AnimatedMarker({ station, onPress }: { station: Station; onPress: () =>
             ]}
           />
         )}
-        <View style={styles.markerOuter}>
-          <View style={[styles.markerInner, { backgroundColor: STATUS_COLOR[station.status] }]} />
-        </View>
+        {(() => {
+          const xml = MARKER_XML[station.status];
+          return xml ? <SvgXml xml={xml} width={40} height={52} /> : null;
+        })()}
       </View>
     </Marker>
   );
@@ -101,10 +166,12 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-
-  const slideAnim = useRef(new Animated.Value(height)).current;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [zoomLevel, setZoomLevel] = useState(12);
+  const [nearbyStationId, setNearbyStationId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
+
   const isFirstLoad = useRef(true);
 
   useEffect(() => {
@@ -119,23 +186,18 @@ export default function MapScreen() {
     return unsubscribe;
   }, []);
 
-  const openSheet = (station: Station) => {
-    setSelectedStation(station);
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      tension: 65,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
-  };
+  useProximityCheck(stations, setNearbyStationId);
 
-  const closeSheet = () => {
-    Animated.spring(slideAnim, {
-      toValue: height,
-      tension: 65,
-      friction: 10,
-      useNativeDriver: true,
-    }).start(() => setSelectedStation(null));
+
+  const filteredStations = stations.filter(
+    (s) =>
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.address?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const onRegionChange = (region: Region) => {
+    const zoom = Math.round(Math.log(360 / region.longitudeDelta) / Math.LN2);
+    setZoomLevel(zoom);
   };
 
   const getStatusBgColor = (status: StationStatus) => {
@@ -144,11 +206,10 @@ export default function MapScreen() {
     return 'rgba(34, 197, 94, 0.15)';
   };
 
-  const handleBookRide = async () => {
-    if (!selectedStation) return;
+  const handleBookRide = async (station: Station) => {
     try {
       const location = await Location.getCurrentPositionAsync({});
-      const url = `uber://?action=setPickup&pickup[latitude]=${location.coords.latitude}&pickup[longitude]=${location.coords.longitude}&dropoff[latitude]=${selectedStation.lat}&dropoff[longitude]=${selectedStation.lng}`;
+      const url = `uber://?action=setPickup&pickup[latitude]=${location.coords.latitude}&pickup[longitude]=${location.coords.longitude}&dropoff[latitude]=${station.lat}&dropoff[longitude]=${station.lng}`;
       if (await Linking.canOpenURL(url)) {
         await Linking.openURL(url);
       } else {
@@ -175,73 +236,75 @@ export default function MapScreen() {
         initialRegion={{
           latitude: 6.5244,
           longitude: 3.3792,
-          latitudeDelta: 0.15,
-          longitudeDelta: 0.15,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
         }}
         showsUserLocation
+        showsTraffic={true}
         showsMyLocationButton={false}
-        onPress={closeSheet}
+        onPress={() => setSelectedStation(null)}
+        onRegionChange={onRegionChange}
       >
-        {stations.map((station) => (
-          <AnimatedMarker key={station.id} station={station} onPress={() => openSheet(station)} />
-        ))}
+        {zoomLevel < 11 ? (
+          // Basic clustering - just a placeholder if we wanted to group, 
+          // but let's show one cluster for simplicity as requested
+          <Marker
+            coordinate={{ latitude: 6.5244, longitude: 3.3792 }}
+            onPress={() => Alert.alert('Zoom in', 'Zoom in to see individual stations')}
+          >
+            <View style={styles.clusterMarker}>
+              <Text style={styles.clusterText}>{filteredStations.length}</Text>
+            </View>
+          </Marker>
+        ) : (
+          filteredStations.map((station) => (
+            <AnimatedMarker 
+              key={station.id} 
+              station={station} 
+              onPress={() => setSelectedStation(station)} 
+              isNearby={station.id === nearbyStationId}
+            />
+          ))
+
+        )}
       </MapView>
 
-      <Animated.View
-        style={[
-          styles.sheetContainer,
-          { transform: [{ translateY: slideAnim }] },
-          { paddingBottom: insets.bottom + 90 }, // space for floating tab bar
-        ]}
-      >
-        <BlurView intensity={40} tint="dark" style={styles.sheetContent}>
-          <View style={styles.dragHandle} />
-          {selectedStation && (
-            <View style={styles.sheetInner}>
-              <View style={styles.sheetHeaderRow}>
-                <Text style={styles.stationName}>{selectedStation.name}</Text>
-                <StatusBadge status={selectedStation.status} />
-              </View>
-
-              <Text style={styles.reportCountText}>
-                <Ionicons name="list-outline" size={13} color="#94A3B8" /> {selectedStation.reportCount} reports · <Ionicons name="time-outline" size={13} color="#94A3B8" /> {selectedStation.lastUpdated}
-              </Text>
-
-              <View style={styles.divider} />
-
-              <TouchableOpacity
-                style={styles.bookButton}
-                activeOpacity={0.85}
-                onPress={handleBookRide}
-              >
-                <Text style={styles.bookButtonText}>Book a Ride</Text>
-              </TouchableOpacity>
-
-              <View style={styles.reportRow}>
-                {(['heavy', 'moderate', 'flowing'] as StationStatus[]).map((status) => {
-                  const statusColors = { heavy: '#EF4444', moderate: '#F97316', flowing: '#22C55E' };
-                  return (
-                  <TouchableOpacity
-                    key={status}
-                    style={styles.reportPill}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      Alert.alert('Success', `Reported as ${STATUS_LABEL[status]}`);
-                      closeSheet();
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <View style={{ backgroundColor: statusColors[status], width: 10, height: 10, borderRadius: 5 }} />
-                      <Text style={styles.reportPillText}>{STATUS_LABEL[status]}</Text>
-                    </View>
-                  </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+      {/* Floating Search Bar */}
+      <View style={[styles.floatingSearchContainer, { top: insets.top + 16 }]}>
+        <View style={styles.floatingSearchInputContainer}>
+          <Ionicons name="search-outline" size={18} color="#64748B" style={styles.searchIcon} />
+          <TextInput
+            style={styles.floatingSearchInput}
+            placeholder="Search stations..."
+            placeholderTextColor="#475569"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
+              <Ionicons name="close-circle" size={18} color="#64748B" />
+            </TouchableOpacity>
           )}
-        </BlurView>
-      </Animated.View>
+        </View>
+
+        <View style={styles.countBadge}>
+          <Text style={styles.countBadgeText}>{filteredStations.length} stations</Text>
+        </View>
+      </View>
+
+      <StationBottomSheet
+        station={selectedStation}
+        onClose={() => setSelectedStation(null)}
+        onReport={(station) => {
+          Alert.alert('Success', `Reported as ${STATUS_LABEL[station.status]}`);
+          setSelectedStation(null);
+        }}
+        onBookRide={(station) => {
+          handleBookRide(station);
+          setSelectedStation(null);
+        }}
+      />
     </View>
   );
 }
@@ -256,15 +319,16 @@ const styles = StyleSheet.create({
   },
   markerContainer: {
     width: 40,
-    height: 40,
+    height: 52,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
   },
   markerPulse: {
     position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   markerOuter: {
     width: 20,
@@ -283,96 +347,59 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
   },
-  sheetContainer: {
+  floatingSearchContainer: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderRadius: 24,
-    overflow: 'visible',
+    left: 16,
+    right: 16,
+    zIndex: 10,
+    alignItems: 'center',
   },
-  sheetContent: {
-    backgroundColor: 'rgba(10, 22, 40, 0.85)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  floatingSearchInputContainer: {
+    backgroundColor: 'rgba(10, 22, 40, 0.92)',
     borderWidth: 1,
-    borderBottomWidth: 0,
     borderColor: 'rgba(59, 130, 246, 0.2)',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  dragHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  sheetInner: {
-    paddingBottom: 20,
-  },
-  sheetHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  stationName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#F1F5F9',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
     borderRadius: 12,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  reportCountText: {
-    fontSize: 13,
-    color: '#94A3B8',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    width: '100%',
-    marginVertical: 16,
-  },
-  bookButton: {
-    width: '100%',
-    height: 52,
-    backgroundColor: '#3B82F6',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  bookButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  reportRow: {
+    height: 44,
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    width: '100%',
   },
-  reportPill: {
+  floatingSearchInput: {
     flex: 1,
+    color: '#F1F5F9',
+    fontSize: 14,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  countBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    marginTop: 12,
+  },
+  countBadgeText: {
+    color: '#60A5FA',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  clusterMarker: {
+    width: 36,
     height: 36,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#3B82F6',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  reportPillText: {
-    fontSize: 11,
+  clusterText: {
     color: '#FFF',
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

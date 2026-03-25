@@ -1,44 +1,82 @@
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import api from '@/lib/api';
+import * as Notifications from 'expo-notifications'
+import * as Device from 'expo-device'
+import Constants from 'expo-constants'
+import { Platform } from 'react-native'
+import { db } from '@/lib/firebase'
+import { doc, updateDoc } from 'firebase/firestore'
 
-export const notificationService = {
-  async requestPermission(): Promise<boolean> {
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync();
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+})
 
-    let finalStatus = existingStatus;
+export const registerForPushNotifications = async (
+  userId: string
+): Promise<string | null> => {
+  if (!Device.isDevice) {
+    console.log('Push notifications require a physical device')
+    return null
+  }
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
+  const { status: existingStatus } = 
+    await Notifications.getPermissionsAsync()
+  
+  let finalStatus = existingStatus
+  
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync()
+    finalStatus = status
+  }
 
+  if (finalStatus !== 'granted') {
+    console.log('Push notification permission denied')
+    finalStatus = (await Notifications.requestPermissionsAsync()).status;
     if (finalStatus !== 'granted') {
-      return false;
+      return null;
     }
+  }
 
-    // Configure notification handling
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    });
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId
+  const token = (await Notifications.getExpoPushTokenAsync({
+    projectId,
+  })).data
 
-    return true;
-  },
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#3B82F6',
+    })
+  }
 
-  async registerPushToken(userId: string): Promise<void> {
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: undefined, // Will use Constants.expoConfig.extra.eas.projectId in production
-    });
+  // Save token to Firestore against user
+  if (userId) {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        pushToken: token,
+        updatedAt: new Date().toISOString(),
+      })
+    } catch (error) {
+      console.error('Error updating push token in Firestore:', error)
+    }
+  }
 
-    await api.post('/notifications/register', {
-      userId,
-      token: tokenData.data,
-      platform: Platform.OS,
-    });
-  },
-};
+  console.log('Push token registered:', token)
+  return token
+}
+
+export const sendLocalNotification = async (
+  title: string,
+  body: string,
+) => {
+  await Notifications.scheduleNotificationAsync({
+    content: { title, body, sound: true },
+    trigger: null, // null = show immediately
+  })
+}

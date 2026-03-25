@@ -5,9 +5,11 @@ export interface Station {
   name: string;
   lat: number;
   lng: number;
+  address?: string;
   status: StationStatus;
   reportCount: number;
   lastUpdated: string;
+  source?: 'manual' | 'google_places';
 }
 
 export interface StatusReport {

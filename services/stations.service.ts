@@ -1,13 +1,10 @@
 import { db } from '@/lib/firebase';
 import {
   collection,
-  doc,
   onSnapshot,
-  addDoc,
-  updateDoc,
-  serverTimestamp,
   query,
 } from 'firebase/firestore';
+import api from '@/lib/api';
 import { Station, StationStatus } from '@/types/station';
 
 // Real-time listener — returns unsubscribe function
@@ -24,22 +21,16 @@ export const subscribeToStations = (
   });
 };
 
-// Submit a crowd report
+// Submit a crowd report via backend API
 export const reportStatus = async (
   stationId: string,
   status: StationStatus
 ): Promise<void> => {
-  // Add report to subcollection
-  await addDoc(
-    collection(db, 'stations', stationId, 'reports'),
-    { status, createdAt: serverTimestamp() }
+  const response = await api.post(
+    `/stations/${stationId}/report`,
+    { status }
   );
-
-  // Update station status directly
-  const firestoreInstance = await import('firebase/firestore');
-  await updateDoc(doc(db, 'stations', stationId), {
-    status,
-    reportCount: firestoreInstance.increment(1),
-    lastUpdated: new Date().toISOString(), // Fallback for lastUpdated format locally or just let component handle date strings
-  });
+  if (!response.data.success) {
+    throw new Error(response.data.message);
+  }
 };

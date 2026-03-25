@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="230" fill="#030816"/>
+  
+  <!-- Subtle inner glow ring -->
+  <rect x="0" y="0" width="1024" height="1024" rx="230" fill="none" stroke="#1E3A8A" stroke-width="3" opacity="0.4"/>
+
+  <!-- Center dot — the source of intelligence -->
+  <circle cx="340" cy="512" r="72" fill="#3B82F6"/>
+  
+  <!-- Inner dot highlight -->
+  <circle cx="320" cy="492" r="24" fill="#60A5FA" opacity="0.5"/>
+
+  <!-- Wave 1 — closest, strongest -->
+  <path d="M452 320 Q560 400 560 512 Q560 624 452 704" 
+        fill="none" stroke="#3B82F6" stroke-width="48" 
+        stroke-linecap="round" opacity="1"/>
+
+  <!-- Wave 2 — middle -->
+  <path d="M520 220 Q664 340 664 512 Q664 684 520 804" 
+        fill="none" stroke="#3B82F6" stroke-width="32" 
+        stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Wave 3 — furthest, faintest -->
+  <path d="M588 120 Q768 280 768 512 Q768 744 588 904" 
+        fill="none" stroke="#3B82F6" stroke-width="20" 
+        stroke-linecap="round" opacity="0.22"/>
+</svg>

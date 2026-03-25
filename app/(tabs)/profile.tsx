@@ -1,25 +1,49 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Image, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { authService } from '@/services/auth.service';
 import { User } from '@/types/auth';
 import { storage } from '@/lib/storage';
 import { Ionicons } from '@expo/vector-icons';
+import { sendLocalNotification } from '@/services/notification.service';
+import { reminderService } from '@/services/reminder.service';
+import { Reminder } from '@/types/reminder';
 
 export default function ProfileScreen() {
+
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState<User | null>(null);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
 
-  useEffect(() => {
-    async function loadUser() {
-      const currentUser = await storage.getUser();
-      if (currentUser) {
-        setUser(currentUser);
+  useFocusEffect(
+    useCallback(() => {
+      async function loadData() {
+        const [currentUser, allReminders] = await Promise.all([
+          storage.getUser(),
+          reminderService.getAll()
+        ]);
+        if (currentUser) setUser(currentUser);
+        setReminders(allReminders);
       }
-    }
-    loadUser();
-  }, []);
+      loadData();
+    }, [])
+  );
+
+
+  const toggleReminder = async (reminder: Reminder) => {
+    const updated = { ...reminder, enabled: !reminder.enabled };
+    await reminderService.save(updated);
+    const all = await reminderService.getAll();
+    setReminders(all);
+  };
+
+  const deleteReminder = async (id: string) => {
+    await reminderService.remove(id);
+    const all = await reminderService.getAll();
+    setReminders(all);
+  };
+
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to log out?', [
@@ -34,15 +58,6 @@ export default function ProfileScreen() {
       },
     ]);
   };
-
-  const initials = user?.name
-    ? user.name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .substring(0, 2)
-        .toUpperCase()
-    : 'MP';
 
   return (
     <ScrollView
@@ -60,14 +75,49 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.profileCard}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        <Text style={styles.userName}>{user?.name || 'User'}</Text>
+        <Image
+          source={{ uri: `https://api.dicebear.com/7.x/avataaars/png?seed=${user?.email || 'Guest'}` }}
+          style={styles.avatar}
+        />
+
+        <Text style={styles.userName}>{user?.name || 'Guest User'}</Text>
         <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
       </View>
 
+      <Text style={styles.sectionLabel}>Commute Reminders</Text>
+      
+      {reminders.length === 0 ? (
+        <View style={styles.infoCard}>
+          <Text style={{ color: '#64748B', fontSize: 13, textAlign: 'center' }}>
+            No reminders set yet.
+          </Text>
+        </View>
+      ) : (
+        reminders.map(r => (
+          <View key={r.id} style={styles.reminderCard}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.reminderStation}>{r.stationName}</Text>
+              <Text style={styles.reminderTime}>
+                Daily at {reminderService.formatTime(r.hour, r.minute)}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Switch
+                value={r.enabled}
+                onValueChange={() => toggleReminder(r)}
+                trackColor={{ false: '#1E293B', true: '#3B82F6' }}
+                thumbColor="#F1F5F9"
+              />
+              <TouchableOpacity onPress={() => deleteReminder(r.id)}>
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))
+      )}
+
       <Text style={styles.sectionLabel}>Account Info</Text>
+
 
       <View style={styles.infoCard}>
         <View style={styles.infoRow}>
@@ -92,6 +142,17 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward-outline" size={20} color="#94A3B8" />
         </View>
       </View>
+
+      <TouchableOpacity
+        onPress={() =>
+          sendLocalNotification('🚨 Station Alert — MovePal', 'Oshodi Terminal is now heavily congested!')
+        }
+        style={styles.testButton}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="notifications-outline" size={20} color="#3B82F6" />
+        <Text style={styles.testButtonText}>Test Notification</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
         <Ionicons name="log-out-outline" size={20} color="#EF4444" />
@@ -128,26 +189,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  avatarCircle: {
-    width: 72,
-    height: 72,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(59, 130, 246, 0.4)',
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     marginBottom: 16,
-  },
-  avatarText: {
-    color: '#3B82F6',
-    fontSize: 24,
-    fontWeight: '700',
+    borderWidth: 2,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
   },
   userName: {
     color: '#F1F5F9',
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     marginBottom: 4,
   },
   userEmail: {
@@ -157,51 +210,84 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: '#94A3B8',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 12,
-    marginLeft: 4,
+    letterSpacing: 1,
+    marginBottom: 16,
+    marginTop: 8,
   },
   infoCard: {
     backgroundColor: '#0A1628',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.1)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   infoLabel: {
+    flex: 1,
     color: '#F1F5F9',
     fontSize: 15,
-    fontWeight: '500',
-    marginLeft: 12,
-    flex: 1,
   },
   infoValue: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 14,
+  },
+  reminderCard: {
+    backgroundColor: '#0A1628',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reminderStation: {
+    color: '#F1F5F9',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  reminderTime: {
+    color: '#64748B',
+    fontSize: 13,
+  },
+  testButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  testButtonText: {
+    color: '#3B82F6',
+    fontWeight: '600',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 12,
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    marginTop: 12,
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.2)',
-    borderRadius: 12,
-    height: 52,
-    marginTop: 24,
-    width: '100%',
-    gap: 8,
   },
   logoutText: {
     color: '#EF4444',
-    fontSize: 15,
     fontWeight: '600',
   },
   versionText: {
