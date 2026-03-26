@@ -76,11 +76,16 @@ export default function RootLayout() {
         // Console log Google Maps API key to verify it's loaded
         console.log('Google Maps API Key:', process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'NOT SET');
 
-        // Bypass auth temporarily since there is no backend
-        router.replace('/(tabs)');
+        // Check for session in storage
+        const userFound = await storage.getUser();
+        if (userFound) {
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/(auth)/login');
+        }
       } catch (e) {
         // Fallback or error tracking
-        router.replace('/(tabs)');
+        router.replace('/(auth)/login');
       } finally {
         setIsReady(true);
       }

@@ -9,12 +9,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { sendLocalNotification } from '@/services/notification.service';
 import { reminderService } from '@/services/reminder.service';
 import { Reminder } from '@/types/reminder';
+import { RedeemPointsSheet } from '@/components/RedeemPointsSheet';
+import api from '@/lib/api';
 
 export default function ProfileScreen() {
 
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState<User | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [showRedeem, setShowRedeem] = useState(false);
+  const [points, setPoints] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -25,6 +29,13 @@ export default function ProfileScreen() {
         ]);
         if (currentUser) setUser(currentUser);
         setReminders(allReminders);
+
+        try {
+          const response = await api.get('/rewards/balance');
+          setPoints(response.data.data.points);
+        } catch (error) {
+          console.error('Failed to fetch points:', error);
+        }
       }
       loadData();
     }, [])
@@ -72,6 +83,43 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>
           <Ionicons name="person-outline" size={24} color="#F1F5F9" /> Profile
         </Text>
+      </View>
+
+      <View style={{
+        backgroundColor: 'rgba(59,130,246,0.1)',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(59,130,246,0.2)',
+        padding: 16,
+        marginBottom: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <View>
+          <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            MovePal Points
+          </Text>
+          <Text style={{ fontSize: 32, fontWeight: '800', color: '#3B82F6', marginTop: 4 }}>
+            {points}
+          </Text>
+          <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+            Earn 10 points per report
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#3B82F6',
+            borderRadius: 10,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+          }}
+          onPress={() => setShowRedeem(true)}
+        >
+          <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>
+            Redeem
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.profileCard}>
@@ -160,6 +208,13 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <Text style={styles.versionText}>MovePal v1.0.0</Text>
+
+      <RedeemPointsSheet
+        visible={showRedeem}
+        currentPoints={points}
+        onClose={() => setShowRedeem(false)}
+        onRedeemed={(used) => setPoints(prev => prev - used)}
+      />
     </ScrollView>
   );
 }
