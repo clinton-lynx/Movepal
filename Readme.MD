@@ -14,27 +14,27 @@ MovePal solves a problem that affects 20 million Lagos commuters every day — t
 
 Every morning, commuters wake up, travel to a station, and only then discover a 2-hour queue and no buses. MovePal ends that. Using AI prediction, crowdsourced reports, and real-time data, MovePal tells you what is happening at every major Lagos transit station **before you step outside**.
 
-> *"Google tells you the road is red. MovePal tells you which station to avoid."*
+> _"Google tells you the road is red. MovePal tells you which station to avoid."_
 
 ---
 
 ## Live Links
 
-| Service | URL |
-|---|---|
-| Backend API | https://movepal-api-pjlh.onrender.com |
-| ML Prediction Service | https://movepal-ml.onrender.com |
-| API Health Check | https://movepal-api-pjlh.onrender.com/health |
+| Service               | URL                                          |
+| --------------------- | -------------------------------------------- |
+| Backend API           | https://movepal-api-pjlh.onrender.com        |
+| ML Prediction Service | https://movepal-ml.onrender.com              |
+| API Health Check      | https://movepal-api-pjlh.onrender.com/health |
 
 ---
 
 ## Repositories
 
-| Repo | Description |
-|---|---|
-| [movepal-frontend](https://github.com/YOUR_USERNAME/movepal-frontend) | React Native (Expo) mobile app |
-| [movepal-backend](https://github.com/YOUR_USERNAME/movepal-backend) | Node.js + TypeScript REST API |
-| [movepal-ml](https://github.com/YUSUF_USERNAME/movepal-ml) | Python Flask ML prediction service |
+| Repo                                                          | Description                        |
+| ------------------------------------------------------------- | ---------------------------------- |
+| [movepal-frontend](https://github.com/clinton-lynx/Movepal)   | React Native (Expo) mobile app     |
+| [movepal-backend](https://github.com/clinton-lynx/Movepal-BE) | Node.js + TypeScript REST API      |
+| [movepal-ml](https://github.com/clinton-lynx/Movepal-ML)      | Python Flask ML prediction service |
 
 ---
 
@@ -54,6 +54,7 @@ Every morning, commuters wake up, travel to a station, and only then discover a 
 ## Tech Stack
 
 ### Frontend (React Native / Expo)
+
 - React Native with Expo SDK
 - Expo Router (file-based navigation)
 - NativeWind (Tailwind CSS) + StyleSheet
@@ -63,6 +64,7 @@ Every morning, commuters wake up, travel to a station, and only then discover a 
 - expo-secure-store for JWT storage
 
 ### Backend (Node.js / TypeScript)
+
 - Express + TypeScript strict mode
 - Firebase Admin SDK
 - JWT authentication + bcryptjs
@@ -72,6 +74,7 @@ Every morning, commuters wake up, travel to a station, and only then discover a 
 - Deployed on Render
 
 ### ML Service (Python)
+
 - Flask REST API
 - scikit-learn Random Forest classifier
 - Trained on Lagos traffic patterns from published academic research
@@ -79,6 +82,7 @@ Every morning, commuters wake up, travel to a station, and only then discover a 
 - Deployed on Render
 
 ### Infrastructure
+
 - Firebase Firestore (real-time database)
 - Google Maps API + Google Places API (84 real Lagos stations)
 - Interswitch API Marketplace (airtime redemption)
@@ -105,12 +109,14 @@ Google Maps API (Station data + traffic)
 ## API Endpoints
 
 ### Auth
+
 ```
 POST /api/auth/register    — Create account, returns JWT
 POST /api/auth/login       — Login, returns JWT
 ```
 
 ### Stations
+
 ```
 GET  /api/stations              — All 84 Lagos stations
 GET  /api/stations/:id          — Single station
@@ -118,6 +124,7 @@ POST /api/stations/:id/report   — Submit status report (auth required)
 ```
 
 ### Rewards (Interswitch)
+
 ```
 GET  /api/rewards/options        — Available redemption tiers
 GET  /api/rewards/balance        — User points balance (auth required)
@@ -125,6 +132,7 @@ POST /api/rewards/redeem         — Redeem points for airtime (auth required)
 ```
 
 ### ML Predictions
+
 ```
 POST /api/ml/predict             — Predict congestion (lat, lng)
 ```
@@ -134,6 +142,7 @@ POST /api/ml/predict             — Predict congestion (lat, lng)
 ## Team Contributions
 
 ### Clinton Adeoti — [@clinton-lynx](https://github.com/clinton-lynx)
+
 **Role: Team Lead / Mobile & Backend Engineer**
 
 - Product vision, architecture design and technical direction
@@ -163,6 +172,7 @@ POST /api/ml/predict             — Predict congestion (lat, lng)
 ---
 
 ### Yusuf Adeniji — [@usefulmech](https://github.com/usefulmech)
+
 **Role: ML Engineer**
 
 - Designed and built the MovePal congestion prediction model
@@ -188,7 +198,7 @@ There is no publicly available dataset of Lagos bus station congestion. Not from
 
 We are not just building an app — we are building the data infrastructure that Nigerian public transit has never had.
 
-*Inspired by the viral story of Ella (@darkskinned.ella) who was threatened for filming a bus queue in Lagos in January 2026.*
+_Inspired by the viral story of Ella (@darkskinned.ella) who was threatened for filming a bus queue in Lagos in January 2026._
 
 ---
 
@@ -200,4 +210,4 @@ We are not just building an app — we are building the data infrastructure that
 
 ---
 
-*MovePal — Because nobody should wake up at 4am and still be caught off guard.*
+_MovePal — Because nobody should wake up at 4am and still be caught off guard._
