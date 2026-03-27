@@ -6,7 +6,8 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { Station } from '@/types/station'
 
-const ML_URL = 'https://movepal-ml.onrender.com'
+// const ML_URL = 'https://movepal-ml.onrender.com'
+const ML_URL = 'https://movepal-ml-2.onrender.com'
 
 interface PredictionResult {
   status: 'heavy' | 'moderate' | 'flowing'

@@ -6,6 +6,7 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import api from '@/lib/api'
+import { storage } from '@/lib/storage'
 
 interface RewardOption {
   points: number
@@ -37,12 +38,17 @@ export const RedeemPointsSheet = ({
 
   useEffect(() => {
     if (visible) {
-      api.get('/rewards/options')
-        .then(res => {
-          setOptions(res.data.data.options)
+      const fetchOptions = async () => {
+        try {
+          const response = await api.get('/rewards/options')
+          setOptions(response.data.data.options)
           setFetching(false)
-        })
-        .catch(() => setFetching(false))
+        } catch (err: any) {
+          console.log('Failed to fetch options:', err.message)
+          setFetching(false)
+        }
+      }
+      fetchOptions()
     }
   }, [visible])
 
@@ -62,24 +68,47 @@ export const RedeemPointsSheet = ({
 
     setLoading(true)
     try {
-      const response = await api.post('/rewards/redeem', {
-        phoneNumber,
-        pointsToRedeem: selectedOption.points,
-        network: selectedNetwork,
-      })
+      // Get token from storage
+      const token = await storage.getToken()
+      
+      console.log('Token exists:', !!token)
+      console.log('Calling URL:', `${process.env.EXPO_PUBLIC_API_URL}/rewards/redeem`)
+      
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/rewards/redeem`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            phoneNumber,
+            pointsToRedeem: selectedOption!.points,
+            network: selectedNetwork,
+          })
+        }
+      )
+      
+      const data = await response.json()
+      console.log('Response status:', response.status)
+      console.log('Response data:', JSON.stringify(data, null, 2))
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Redemption failed')
+      }
 
       Alert.alert(
         '🎉 Airtime Sent!',
-        response.data.message,
+        data.message,
         [{ text: 'Great!', onPress: () => {
-          onRedeemed(selectedOption.points)
+          onRedeemed(selectedOption!.points)
           onClose()
         }}]
       )
     } catch (err: any) {
-      const msg = err.response?.data?.message || 
-        'Redemption failed. Try again.'
-      Alert.alert('Failed', msg)
+      console.log('Fetch error:', err.message)
+      Alert.alert('Failed', err.message || 'Try again')
     } finally {
       setLoading(false)
     }

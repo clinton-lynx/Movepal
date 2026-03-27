@@ -37,7 +37,13 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "package": "com.clinton_lynxx.movepal"
+      "package": "com.clinton_lynxx.movepal",
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAy5Uy7V5oapA7-bpHbO7siDDu0ecORQeY"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

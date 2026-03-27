@@ -1,6 +1,7 @@
 import { StationStatus } from '@/types/station'
 
-const ML_URL = 'https://movepal-ml.onrender.com'
+// const ML_URL = 'https://movepal-ml.onrender.com'
+const ML_URL = 'https://movepal-ml-2.onrender.com'
 
 export interface Prediction {
   status: StationStatus

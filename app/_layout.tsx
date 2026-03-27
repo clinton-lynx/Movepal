@@ -1,8 +1,9 @@
 import '../global.css';
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ErrorBoundary } from 'react-error-boundary'
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
@@ -13,9 +14,31 @@ import { predictStation } from '@/services/prediction.service';
 import { reportStatus } from '@/services/stations.service';
 import { Alert, Linking } from 'react-native';
 
-
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <View style={{ flex: 1, padding: 40, paddingTop: 80, backgroundColor: '#030816' }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#EF4444' }}>
+        App crashed
+      </Text>
+      <Text style={{ fontSize: 13, marginTop: 20, color: '#F1F5F9' }}>
+        {error.message}
+      </Text>
+      <Text style={{ fontSize: 11, marginTop: 20, color: '#64748B' }}>
+        {error.stack}
+      </Text>
+    </View>
+  )
+}
 
 export default function RootLayout() {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <RootLayoutContent />
+    </ErrorBoundary>
+  )
+}
+
+function RootLayoutContent() {
   const theme = useTheme();
   const [isReady, setIsReady] = useState(false);
 

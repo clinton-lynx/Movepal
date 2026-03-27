@@ -3,7 +3,7 @@ import * as Device from 'expo-device'
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 import { db } from '@/lib/firebase'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, setDoc } from 'firebase/firestore'
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -58,10 +58,10 @@ export const registerForPushNotifications = async (
   // Save token to Firestore against user
   if (userId) {
     try {
-      await updateDoc(doc(db, 'users', userId), {
+      await setDoc(doc(db, 'users', userId), {
         pushToken: token,
         updatedAt: new Date().toISOString(),
-      })
+      }, { merge: true })
     } catch (error) {
       console.error('Error updating push token in Firestore:', error)
     }

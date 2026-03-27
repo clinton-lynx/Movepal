@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1089915419635",
+    "project_id": "movepal-fcfb4",
+    "storage_bucket": "movepal-fcfb4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1089915419635:android:40033475150c233866f086",
+        "android_client_info": {
+          "package_name": "com.clinton_lynxx.movepal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwu8NKvJ9UG2zILnPZdfOGt7_dxXJsm4E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
